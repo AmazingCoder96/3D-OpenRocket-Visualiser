@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Rocket Flight Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: sans-serif; }
+        canvas { display: block; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        .ui-overlay { position: absolute; top: 0; left: 0; padding: 20px; pointer-events: none; width: 100%; height: 100%; }
+        .controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: rgba(0,0,0,0.8); pointer-events: auto; }
+        .interactive { pointer-events: auto; }
+        #drop-zone { border: 2px dashed #444; transition: all 0.3s; }
+        #drop-zone.hover { border-color: #00ff00; background: rgba(0,255,0,0.1); }
+        
+        input[type=range] { accent-color: #2563eb; }
+
+        #help-modal { 
+            transition: opacity 0.3s ease; 
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        #help-modal.visible { opacity: 1; pointer-events: auto; }
+        #help-modal.visible .modal-content { transform: scale(1); }
+        
+        .step-img {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-top: 12px;
+            display: block;
+            background: #111;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 opacity-0 pointer-events-none p-4">
+        <div class="modal-content bg-zinc-900 border border-white/20 rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-400">Setup Instructions</h2>
+                    <button id="close-help" class="text-gray-400 hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-8">
+                    <!-- Step 1 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                            Run Simulation
+                        </h3>
+                        <p class="text-gray-400 text-sm mt-1 ml-8">Execute your rocket simulation and select the <b>Plot / Export</b> button to proceed.</p>
+                        <img src="step1.png" alt="Plot/Export Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+1+Image+Missing';">
+                    </section>
+
+                    <!-- Step 2 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                            Export Data
+                        </h3>
+                        <p class="text-gray-400 text-sm mt-1 ml-8">In the window that appears, locate and click the <b>Export Data</b> button positioned adjacent to the plot options.</p>
+                        <img src="step2.png" alt="Export Data Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+2+Image+Missing';">
+                    </section>
+
+                    <!-- Step 3 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+                            Configure Settings
+                        </h3>
+                        <p class="text-gray-400 text-sm mt-1 ml-8">Select the specific checkboxes and configuration settings as illustrated in the reference image below to ensure data compatibility.</p>
+                        <img src="step3.png" alt="Configuration Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+3+Image+Missing';">
+                    </section>
+
+                    <!-- Step 4 -->
+                    <section>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
+                            Visualize
+                        </h3>
+                        <p class="text-gray-400 text-sm mt-1 ml-8">Upload the exported CSV file; your 3D flight visualization will then generate automatically.</p>
+                        <img src="step4.png" alt="Visualization Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+4+Image+Missing';">
+                    </section>
+                </div>
+                
+                <button id="modal-ok" class="mt-8 w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition-colors">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="ui-overlay flex justify-between items-start">
+        <div class="telemetry bg-black/70 p-4 rounded-lg border border-white/10 backdrop-blur-md min-w-[200px] interactive">
+            <h2 class="text-xl font-bold text-blue-400 leading-tight">3D Rocket Flight Simulator</h2>
+            <p class="text-[11px] text-blue-200/70 mb-3">made by Vihaan Zalpuri</p>
+            
+            <div class="space-y-1 text-sm">
+                <p>Time: <span id="tel-time" class="font-mono text-blue-200">0.00</span> s</p>
+                <p>Altitude: <span id="tel-alt" class="font-mono text-blue-200">0.00</span> m</p>
+                <p>Velocity: <span id="tel-vel" class="font-mono text-blue-200">0.00</span> m/s</p>
+                <hr class="my-2 border-white/20">
+                <p class="text-xs text-gray-400">Peak: <span id="tel-peak">0.00</span> m</p>
+            </div>
+            
+            <div class="mt-4">
+                <label class="text-[10px] uppercase text-gray-400 block mb-1">Camera Zoom</label>
+                <input type="range" id="zoom-slider" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="5" max="1000" value="50">
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2 items-center min-w-[180px]">
+            <div id="drop-zone" class="interactive w-full p-4 rounded-lg bg-black/40 text-center flex flex-col justify-center cursor-pointer h-24">
+                <p class="text-sm">Drag & Drop .csv</p>
+                <p class="text-xs text-gray-500">or click to upload</p>
+                <input type="file" id="file-input" class="hidden" accept=".csv">
+            </div>
+            
+            <button id="open-help" class="interactive flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-blue-400 text-xs font-bold transition-all border border-white/5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Help & Instructions
+            </button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex items-center gap-4 mb-2">
+                <button id="play-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-1 rounded text-sm font-bold min-w-[80px] transition-colors">Play</button>
+                <input type="range" id="timeline" class="flex-grow h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="0" step="0.01">
+            </div>
+            <div class="flex justify-between text-xs text-gray-400 font-mono">
+                <span>LIFTOFF</span>
+                <span id="current-time-display">0.0s</span>
+                <span>TOUCHDOWN (<span id="total-time-display">0.0</span>s)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, rocket, ground, trail;
+        let flightData = [];
+        let isPlaying = false;
+        let playbackTime = 0;
+        let totalDuration = 0;
+        let clock = new THREE.Clock();
+        let zoomDistance = 50; 
+        let theta = Math.PI / 4; 
+        let phi = Math.PI / 3;   
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05070a);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            sunLight.position.set(100, 1000, 100);
+            scene.add(sunLight);
+
+            const grid = new THREE.GridHelper(5000, 100, 0x333333, 0x111111);
+            scene.add(grid);
+            
+            const groundGeo = new THREE.PlaneGeometry(20000, 20000);
+            const groundMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+
+            rocket = new THREE.Group();
+            const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 4, 16);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 2;
+            rocket.add(body);
+            const coneGeo = new THREE.ConeGeometry(0.5, 1.5, 16);
+            const coneMat = new THREE.MeshPhongMaterial({ color: 0xdd0000 });
+            const cone = new THREE.Mesh(coneGeo, coneMat);
+            cone.position.y = 4.75;
+            rocket.add(cone);
+            const finGeo = new THREE.BoxGeometry(2, 1, 0.05);
+            const finMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const fin1 = new THREE.Mesh(finGeo, finMat);
+            fin1.position.y = 0.5;
+            rocket.add(fin1);
+            const fin2 = new THREE.Mesh(finGeo, finMat);
+            fin2.position.y = 0.5;
+            fin2.rotation.y = Math.PI / 2;
+            rocket.add(fin2);
+            scene.add(rocket);
+
+            const trailMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
+            const trailGeo = new THREE.BufferGeometry();
+            trail = new THREE.Line(trailGeo, trailMat);
+            trail.frustumCulled = false; 
+            scene.add(trail);
+
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('wheel', onMouseWheel, { passive: false });
+            
+            setupInteractions();
+            setupHelpModal();
+            animate();
+        }
+
+        function setupHelpModal() {
+            const modal = document.getElementById('help-modal');
+            const openBtn = document.getElementById('open-help');
+            const closeBtn = document.getElementById('close-help');
+            const okBtn = document.getElementById('modal-ok');
+            openBtn.onclick = () => modal.classList.add('visible');
+            closeBtn.onclick = () => modal.classList.remove('visible');
+            okBtn.onclick = () => modal.classList.remove('visible');
+        }
+
+        function onMouseDown(e) { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; }
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            theta -= deltaX * 0.01;
+            phi += deltaY * 0.01;
+            phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+        function onMouseUp() { isDragging = false; }
+        function onMouseWheel(event) {
+            if (event.target.tagName === 'INPUT') return;
+            event.preventDefault();
+            if (event.deltaY > 0) zoomDistance = Math.min(2000, zoomDistance * 1.1);
+            else zoomDistance = Math.max(5, zoomDistance * 0.9);
+            document.getElementById('zoom-slider').value = zoomDistance;
+        }
+
+        function setupInteractions() {
+            const fileInput = document.getElementById('file-input');
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.onclick = () => fileInput.click();
+            fileInput.onchange = (e) => handleFile(e.target.files[0]);
+            
+            document.getElementById('play-btn').onclick = function() {
+                isPlaying = !isPlaying;
+                this.innerText = isPlaying ? 'Pause' : 'Play';
+                if (isPlaying && playbackTime >= totalDuration) playbackTime = 0;
+            };
+
+            document.getElementById('timeline').oninput = (e) => {
+                isPlaying = false;
+                document.getElementById('play-btn').innerText = 'Play';
+                playbackTime = (e.target.value / 100) * totalDuration;
+            };
+
+            document.getElementById('zoom-slider').oninput = (e) => zoomDistance = parseFloat(e.target.value);
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            const text = await file.text();
+            const lines = text.split(/\r?\n/);
+            const data = [];
+            let maxAlt = 0;
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length < 2) continue;
+                const entry = { time: parseFloat(cols[0]), alt: parseFloat(cols[1]), east: parseFloat(cols[2]) || 0, north: parseFloat(cols[3]) || 0 };
+                if (isNaN(entry.time) || isNaN(entry.alt)) continue;
+                if (entry.alt > maxAlt) maxAlt = entry.alt;
+                data.push(entry);
+            }
+            if (data.length > 0) {
+                flightData = data.sort((a, b) => a.time - b.time);
+                totalDuration = flightData[flightData.length - 1].time;
+                playbackTime = 0;
+                document.getElementById('tel-peak').innerText = maxAlt.toFixed(2);
+                document.getElementById('total-time-display').innerText = totalDuration.toFixed(1);
+                updateTrail();
+            }
+        }
+
+        function updateTrail() {
+            const points = flightData.map(d => new THREE.Vector3(d.east, d.alt, d.north));
+            trail.geometry.setFromPoints(points);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isPlaying) playbackTime += clock.getDelta();
+            else clock.getDelta(); // Reset delta
+
+            const data = (function(t) {
+                if (flightData.length === 0) return null;
+                if (t <= flightData[0].time) return flightData[0];
+                if (t >= flightData[flightData.length-1].time) return flightData[flightData.length-1];
+                let i = 1; while (i < flightData.length && flightData[i].time < t) i++;
+                const p1 = flightData[i-1], p2 = flightData[i], a = (t - p1.time) / (p2.time - p1.time);
+                return { time: t, alt: p1.alt + a*(p2.alt-p1.alt), east: p1.east + a*(p2.east-p1.east), north: p1.north + a*(p2.north-p1.north), vel: (p2.alt-p1.alt)/(p2.time-p1.time) };
+            })(playbackTime);
+
+            if (data) {
+                rocket.position.set(data.east, data.alt, data.north);
+                document.getElementById('tel-time').innerText = data.time.toFixed(2);
+                document.getElementById('tel-alt').innerText = data.alt.toFixed(2);
+                document.getElementById('tel-vel').innerText = (data.vel || 0).toFixed(2);
+                document.getElementById('current-time-display').innerText = data.time.toFixed(1) + 's';
+                document.getElementById('timeline').value = (playbackTime / totalDuration) * 100;
+            }
+
+            const targetCam = new THREE.Vector3(
+                rocket.position.x + zoomDistance * Math.sin(phi) * Math.cos(theta),
+                rocket.position.y + zoomDistance * Math.cos(phi),
+                rocket.position.z + zoomDistance * Math.sin(phi) * Math.sin(theta)
+            );
+            camera.position.lerp(targetCam, 0.1);
+            camera.lookAt(rocket.position);
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+        window.onload = init;
+    </script>
+</body>
+</html>
