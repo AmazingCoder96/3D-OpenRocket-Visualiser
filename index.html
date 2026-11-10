@@ -7,146 +7,135 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #121212; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
         canvas { display: block; cursor: grab; }
         canvas:active { cursor: grabbing; }
-        .ui-overlay { position: absolute; top: 0; left: 0; padding: 20px; pointer-events: none; width: 100%; height: 100%; }
-        .controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: rgba(0,0,0,0.8); pointer-events: auto; }
+        .ui-overlay { position: absolute; top: 0; left: 0; padding: 16px; pointer-events: none; width: 100%; height: 100%; }
+        .controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px 16px; background: #1e1e1e; border-top: 1px solid #333; pointer-events: auto; }
         .interactive { pointer-events: auto; }
-        #drop-zone { border: 2px dashed #444; transition: all 0.3s; }
-        #drop-zone.hover { border-color: #00ff00; background: rgba(0,255,0,0.1); }
+        #drop-zone { border: 1px dashed #666; transition: background 0.15s; border-radius: 0; }
+        #drop-zone.hover { border-color: #fff; background: rgba(255,255,255,0.1); }
         
-        input[type=range] { accent-color: #2563eb; }
+        input[type=range] { accent-color: #4a90e2; border-radius: 0; }
 
         #help-modal { 
-            transition: opacity 0.3s ease; 
-            backdrop-filter: blur(8px);
+            transition: opacity 0.15s ease; 
         }
         .modal-content {
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
+            border-radius: 0;
         }
         #help-modal.visible { opacity: 1; pointer-events: auto; }
-        #help-modal.visible .modal-content { transform: scale(1); }
         
         .step-img {
             width: 100%;
             max-width: 500px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            margin-top: 12px;
+            border-radius: 0;
+            border: 1px solid #333;
+            margin-top: 8px;
             display: block;
-            background: #111;
+            background: #000;
         }
     </style>
 </head>
 <body>
 
     <!-- Help Modal -->
-    <div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 opacity-0 pointer-events-none p-4">
-        <div class="modal-content bg-zinc-900 border border-white/20 rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-            <div class="p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-blue-400">Setup Instructions</h2>
-                    <button id="close-help" class="text-gray-400 hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+    <div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 opacity-0 pointer-events-none p-4">
+        <div class="modal-content bg-zinc-900 border border-zinc-700 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4 border-b border-zinc-700 pb-3">
+                    <h2 class="text-lg font-bold text-white">Setup & CSV Export Guide</h2>
+                    <button id="close-help" class="text-zinc-400 hover:text-white">✕</button>
                 </div>
                 
-                <div class="space-y-8">
-                    <!-- Step 1 -->
+                <div class="space-y-6 text-sm">
                     <section>
-                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <span class="bg-zinc-700 text-white w-5 h-5 flex items-center justify-center text-xs font-mono">1</span>
                             Run Simulation
                         </h3>
-                        <p class="text-gray-400 text-sm mt-1 ml-8">Execute your rocket simulation and select the <b>Plot / Export</b> button to proceed.</p>
-                        <img src="step1.png" alt="Plot/Export Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+1+Image+Missing';">
+                        <p class="text-zinc-400 mt-1 ml-7">Execute your simulation in OpenRocket and select <b>Plot / Export</b>.</p>
+                        <img src="step1.png" alt="Plot/Export Step" class="step-img ml-7" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+1+Image+Missing';">
                     </section>
 
-                    <!-- Step 2 -->
                     <section>
-                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <span class="bg-zinc-700 text-white w-5 h-5 flex items-center justify-center text-xs font-mono">2</span>
                             Export Data
                         </h3>
-                        <p class="text-gray-400 text-sm mt-1 ml-8">In the window that appears, locate and click the <b>Export Data</b> button positioned adjacent to the plot options.</p>
-                        <img src="step2.png" alt="Export Data Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+2+Image+Missing';">
+                        <p class="text-zinc-400 mt-1 ml-7">Click the <b>Export Data</b> button.</p>
+                        <img src="step2.png" alt="Export Data Step" class="step-img ml-7" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+2+Image+Missing';">
                     </section>
 
-                    <!-- Step 3 -->
                     <section>
-                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
-                            Configure Settings
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <span class="bg-zinc-700 text-white w-5 h-5 flex items-center justify-center text-xs font-mono">3</span>
+                            Orientation Variables
                         </h3>
-                        <p class="text-gray-400 text-sm mt-1 ml-8">Select the specific checkboxes and configuration settings as illustrated in the reference image below to ensure data compatibility.</p>
-                        <img src="step3.png" alt="Configuration Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+3+Image+Missing';">
+                        <p class="text-zinc-400 mt-1 ml-7">Include <i>Vertical orientation (zenith)</i> & <i>Lateral orientation (azimuth)</i> columns.</p>
+                        <img src="step3.png" alt="Configuration Step" class="step-img ml-7" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+3+Image+Missing';">
                     </section>
 
-                    <!-- Step 4 -->
                     <section>
-                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                            <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <span class="bg-zinc-700 text-white w-5 h-5 flex items-center justify-center text-xs font-mono">4</span>
                             Visualize
                         </h3>
-                        <p class="text-gray-400 text-sm mt-1 ml-8">Upload the exported CSV file; your 3D flight visualization will then generate automatically.</p>
-                        <img src="step4.png" alt="Visualization Step" class="step-img ml-8" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+4+Image+Missing';">
+                        <p class="text-zinc-400 mt-1 ml-7">Drag & drop your CSV file to view the trajectory in 3D.</p>
+                        <img src="step4.png" alt="Visualization Step" class="step-img ml-7" onerror="this.src='https://via.placeholder.com/500x200/111/444?text=Step+4+Image+Missing';">
                     </section>
                 </div>
                 
-                <button id="modal-ok" class="mt-8 w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition-colors">Continue</button>
+                <button id="modal-ok" class="mt-6 w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 font-bold text-xs">Close</button>
             </div>
         </div>
     </div>
 
     <div class="ui-overlay flex justify-between items-start">
-        <div class="telemetry bg-black/70 p-4 rounded-lg border border-white/10 backdrop-blur-md min-w-[200px] interactive">
-            <h2 class="text-xl font-bold text-blue-400 leading-tight">3D Rocket Flight Simulator</h2>
-            <p class="text-[11px] text-blue-200/70 mb-3">made by Vihaan Zalpuri</p>
-            
-            <div class="space-y-1 text-sm">
-                <p>Time: <span id="tel-time" class="font-mono text-blue-200">0.00</span> s</p>
-                <p>Altitude: <span id="tel-alt" class="font-mono text-blue-200">0.00</span> m</p>
-                <p>Velocity: <span id="tel-vel" class="font-mono text-blue-200">0.00</span> m/s</p>
-                <hr class="my-2 border-white/20">
-                <p class="text-xs text-gray-400">Peak: <span id="tel-peak">0.00</span> m</p>
+        <div class="telemetry bg-zinc-900/95 p-4 border border-zinc-700 min-w-[220px] interactive">
+            <div class="border-b border-zinc-700 pb-2 mb-2">
+                <h2 class="text-sm font-bold text-white uppercase">Flight Telemetry</h2>
             </div>
             
-            <div class="mt-4">
-                <label class="text-[10px] uppercase text-gray-400 block mb-1">Camera Zoom</label>
-                <input type="range" id="zoom-slider" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="5" max="1000" value="50">
+            <div class="space-y-1 text-xs font-mono">
+                <div class="flex justify-between text-zinc-400"><span>Time:</span><span id="tel-time" class="text-white">0.00 s</span></div>
+                <div class="flex justify-between text-zinc-400"><span>Altitude:</span><span id="tel-alt" class="text-white">0.00 m</span></div>
+                <div class="flex justify-between text-zinc-400"><span>Velocity:</span><span id="tel-vel" class="text-white">0.00 m/s</span></div>
+                <hr class="my-1.5 border-zinc-800">
+                <div class="flex justify-between text-zinc-400"><span>Zenith:</span><span id="tel-zenith" class="text-zinc-300">90.0°</span></div>
+                <div class="flex justify-between text-zinc-400"><span>Azimuth:</span><span id="tel-azimuth" class="text-zinc-300">0.0°</span></div>
+                <div class="flex justify-between text-zinc-400 pt-1"><span>Peak Alt:</span><span id="tel-peak" class="text-zinc-300">0.00 m</span></div>
+            </div>
+            
+            <div class="mt-3 pt-2 border-t border-zinc-800">
+                <label class="text-[10px] uppercase text-zinc-400 block mb-1">Zoom</label>
+                <input type="range" id="zoom-slider" class="w-full h-1 bg-zinc-800 appearance-none cursor-pointer" min="5" max="1000" value="50">
             </div>
         </div>
 
-        <div class="flex flex-col gap-2 items-center min-w-[180px]">
-            <div id="drop-zone" class="interactive w-full p-4 rounded-lg bg-black/40 text-center flex flex-col justify-center cursor-pointer h-24">
-                <p class="text-sm">Drag & Drop .csv</p>
-                <p class="text-xs text-gray-500">or click to upload</p>
+        <div class="flex flex-col gap-2 items-center min-w-[170px]">
+            <div id="drop-zone" class="interactive w-full p-3 bg-zinc-900/90 text-center flex flex-col justify-center cursor-pointer h-20 border border-zinc-700">
+                <p class="text-xs font-bold text-white">Upload CSV</p>
+                <p class="text-[10px] text-zinc-400 mt-0.5">Drag & drop or click</p>
                 <input type="file" id="file-input" class="hidden" accept=".csv">
             </div>
             
-            <button id="open-help" class="interactive flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-blue-400 text-xs font-bold transition-all border border-white/5">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Help & Instructions
+            <button id="open-help" class="interactive w-full py-1.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold border border-zinc-700">
+                Help / Guide
             </button>
         </div>
     </div>
 
     <div class="controls">
         <div class="max-w-4xl mx-auto">
-            <div class="flex items-center gap-4 mb-2">
-                <button id="play-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-1 rounded text-sm font-bold min-w-[80px] transition-colors">Play</button>
-                <input type="range" id="timeline" class="flex-grow h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="0" step="0.01">
+            <div class="flex items-center gap-3 mb-1">
+                <button id="play-btn" class="bg-zinc-200 hover:bg-white text-black px-4 py-1 text-xs font-bold min-w-[75px]">Play</button>
+                <input type="range" id="timeline" class="flex-grow h-1.5 bg-zinc-700 appearance-none cursor-pointer" min="0" max="100" value="0" step="0.01">
             </div>
-            <div class="flex justify-between text-xs text-gray-400 font-mono">
-                <span>LIFTOFF</span>
-                <span id="current-time-display">0.0s</span>
-                <span>TOUCHDOWN (<span id="total-time-display">0.0</span>s)</span>
+            <div class="flex justify-between text-[10px] text-zinc-400 font-mono">
+                <span>0.0s</span>
+                <span id="current-time-display" class="text-white font-bold">0.0s</span>
+                <span><span id="total-time-display">0.0</span>s</span>
             </div>
         </div>
     </div>
@@ -166,50 +155,53 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x05070a);
+            scene.background = new THREE.Color(0x050505);
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
-            const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
             sunLight.position.set(100, 1000, 100);
             scene.add(sunLight);
 
-            const grid = new THREE.GridHelper(5000, 100, 0x333333, 0x111111);
+            const grid = new THREE.GridHelper(5000, 100, 0x444444, 0x1a1a1a);
             scene.add(grid);
             
             const groundGeo = new THREE.PlaneGeometry(20000, 20000);
-            const groundMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+            const groundMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0a });
             ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
             scene.add(ground);
 
             rocket = new THREE.Group();
             const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 4, 16);
-            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             body.position.y = 2;
             rocket.add(body);
+            
             const coneGeo = new THREE.ConeGeometry(0.5, 1.5, 16);
-            const coneMat = new THREE.MeshPhongMaterial({ color: 0xdd0000 });
+            const coneMat = new THREE.MeshPhongMaterial({ color: 0xb91c1c });
             const cone = new THREE.Mesh(coneGeo, coneMat);
             cone.position.y = 4.75;
             rocket.add(cone);
+            
             const finGeo = new THREE.BoxGeometry(2, 1, 0.05);
-            const finMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const finMat = new THREE.MeshPhongMaterial({ color: 0x27272a });
             const fin1 = new THREE.Mesh(finGeo, finMat);
             fin1.position.y = 0.5;
             rocket.add(fin1);
+            
             const fin2 = new THREE.Mesh(finGeo, finMat);
             fin2.position.y = 0.5;
             fin2.rotation.y = Math.PI / 2;
             rocket.add(fin2);
             scene.add(rocket);
 
-            const trailMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
+            const trailMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
             const trailGeo = new THREE.BufferGeometry();
             trail = new THREE.Line(trailGeo, trailMat);
             trail.frustumCulled = false; 
@@ -282,19 +274,55 @@
             const lines = text.split(/\r?\n/);
             const data = [];
             let maxAlt = 0;
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(',');
-                if (cols.length < 2) continue;
-                const entry = { time: parseFloat(cols[0]), alt: parseFloat(cols[1]), east: parseFloat(cols[2]) || 0, north: parseFloat(cols[3]) || 0 };
-                if (isNaN(entry.time) || isNaN(entry.alt)) continue;
-                if (entry.alt > maxAlt) maxAlt = entry.alt;
-                data.push(entry);
+
+            let colTime = -1, colAlt = -1, colEast = -1, colNorth = -1, colZenith = -1, colAzimuth = -1;
+
+            // Search header line
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (line.startsWith('#')) line = line.replace(/^#\s*/, '');
+                if (line.includes('Time') && (line.includes('Altitude') || line.includes('Vertical velocity'))) {
+                    const headers = line.split(',').map(h => h.trim().toLowerCase());
+                    headers.forEach((h, idx) => {
+                        if (h.startsWith('time')) colTime = idx;
+                        else if (h.startsWith('altitude') && !h.includes('sea level')) colAlt = idx;
+                        else if (h.includes('east')) colEast = idx;
+                        else if (h.includes('north')) colNorth = idx;
+                        else if (h.includes('zenith') || h.includes('pitch')) colZenith = idx;
+                        else if (h.includes('azimuth') || h.includes('yaw')) colAzimuth = idx;
+                    });
+                    break;
+                }
             }
+
+            // Fallback column positions if header parsing fails
+            if (colTime === -1) colTime = 0;
+            if (colAlt === -1) colAlt = 1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line.startsWith('#')) continue;
+                const cols = line.split(',');
+                if (cols.length < 2) continue;
+
+                const time = parseFloat(cols[colTime]);
+                const alt = parseFloat(cols[colAlt]);
+                if (isNaN(time) || isNaN(alt)) continue;
+
+                const east = colEast !== -1 ? (parseFloat(cols[colEast]) || 0) : 0;
+                const north = colNorth !== -1 ? (parseFloat(cols[colNorth]) || 0) : 0;
+                const zenith = colZenith !== -1 ? (parseFloat(cols[colZenith])) : NaN;
+                const azimuth = colAzimuth !== -1 ? (parseFloat(cols[colAzimuth])) : NaN;
+
+                if (alt > maxAlt) maxAlt = alt;
+                data.push({ time, alt, east, north, zenith, azimuth });
+            }
+
             if (data.length > 0) {
                 flightData = data.sort((a, b) => a.time - b.time);
                 totalDuration = flightData[flightData.length - 1].time;
                 playbackTime = 0;
-                document.getElementById('tel-peak').innerText = maxAlt.toFixed(2);
+                document.getElementById('tel-peak').innerText = maxAlt.toFixed(2) + ' m';
                 document.getElementById('total-time-display').innerText = totalDuration.toFixed(1);
                 updateTrail();
             }
@@ -308,7 +336,7 @@
         function animate() {
             requestAnimationFrame(animate);
             if (isPlaying) playbackTime += clock.getDelta();
-            else clock.getDelta(); // Reset delta
+            else clock.getDelta();
 
             const data = (function(t) {
                 if (flightData.length === 0) return null;
@@ -316,16 +344,49 @@
                 if (t >= flightData[flightData.length-1].time) return flightData[flightData.length-1];
                 let i = 1; while (i < flightData.length && flightData[i].time < t) i++;
                 const p1 = flightData[i-1], p2 = flightData[i], a = (t - p1.time) / (p2.time - p1.time);
-                return { time: t, alt: p1.alt + a*(p2.alt-p1.alt), east: p1.east + a*(p2.east-p1.east), north: p1.north + a*(p2.north-p1.north), vel: (p2.alt-p1.alt)/(p2.time-p1.time) };
+                
+                const interpZenith = (!isNaN(p1.zenith) && !isNaN(p2.zenith)) ? p1.zenith + a * (p2.zenith - p1.zenith) : 90;
+                const interpAzimuth = (!isNaN(p1.azimuth) && !isNaN(p2.azimuth)) ? p1.azimuth + a * (p2.azimuth - p1.azimuth) : 0;
+
+                return { 
+                    time: t, 
+                    alt: p1.alt + a*(p2.alt-p1.alt), 
+                    east: p1.east + a*(p2.east-p1.east), 
+                    north: p1.north + a*(p2.north-p1.north), 
+                    vel: (p2.alt-p1.alt)/(p2.time-p1.time),
+                    zenith: interpZenith,
+                    azimuth: interpAzimuth
+                };
             })(playbackTime);
 
             if (data) {
                 rocket.position.set(data.east, data.alt, data.north);
-                document.getElementById('tel-time').innerText = data.time.toFixed(2);
-                document.getElementById('tel-alt').innerText = data.alt.toFixed(2);
-                document.getElementById('tel-vel').innerText = (data.vel || 0).toFixed(2);
+                
+                // Correct OpenRocket orientation transformation:
+                // Zenith = angle from ground zenith (90° is straight up, 0° horizontal).
+                // Azimuth = compass direction (0° North, 90° East, 180° South, 270° West).
+                const zenithDeg = isNaN(data.zenith) ? 90 : data.zenith;
+                const azimuthDeg = isNaN(data.azimuth) ? 0 : data.azimuth;
+
+                // Reset rotation
+                rocket.rotation.set(0, 0, 0);
+
+                // OpenRocket coordinates to Three.js coordinates:
+                // Pitch down from vertical (Y-axis): rotate around pitch axis after aligning yaw
+                const pitchRad = (90 - zenithDeg) * (Math.PI / 180);
+                const yawRad = azimuthDeg * (Math.PI / 180);
+
+                // Use Euler ZXY / YXZ sequence for natural rocket attitude
+                const euler = new THREE.Euler(0, -yawRad, -pitchRad, 'YXZ');
+                rocket.quaternion.setFromEuler(euler);
+
+                document.getElementById('tel-time').innerText = data.time.toFixed(2) + ' s';
+                document.getElementById('tel-alt').innerText = data.alt.toFixed(2) + ' m';
+                document.getElementById('tel-vel').innerText = (data.vel || 0).toFixed(2) + ' m/s';
+                document.getElementById('tel-zenith').innerText = zenithDeg.toFixed(1) + '°';
+                document.getElementById('tel-azimuth').innerText = azimuthDeg.toFixed(1) + '°';
                 document.getElementById('current-time-display').innerText = data.time.toFixed(1) + 's';
-                document.getElementById('timeline').value = (playbackTime / totalDuration) * 100;
+                document.getElementById('timeline').value = totalDuration > 0 ? (playbackTime / totalDuration) * 100 : 0;
             }
 
             const targetCam = new THREE.Vector3(
